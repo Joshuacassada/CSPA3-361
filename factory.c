@@ -191,15 +191,12 @@ void subFactory( int factoryID , int myCapacity , int myDuration )
         msg.partsMade = toMake;
         msg.duration = myDuration;
         sendto(sd, &msg, sizeof(msg), 0, (SA *)&clntSkt, sizeof(clntSkt));
-        
-    
 
 
         // Send a Production Message to Supervisor
 
 
         // missing code goes here
-
 
     }
 
@@ -208,6 +205,12 @@ void subFactory( int factoryID , int myCapacity , int myDuration )
 
     // missing code goes here
 
+    msg.purpose = COMPLETION_MSG;
+    msg.facID = factoryID;
+    msg.capacity = myCapacity;
+    msg.partsMade = partsImade;
+    msg.duration = myDuration;
+    sendto(sd, &msg, sizeof(msg), 0, (SA *)&clntSkt, sizeof(clntSkt));
 
 
     snprintf( strBuff , MAXSTR , ">>> Factory # %-3d: Terminating after making total of %-5d parts in %-4d iterations\n" 
