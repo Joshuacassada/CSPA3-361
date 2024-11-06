@@ -79,6 +79,8 @@ int main( int argc , char *argv[] )
 
     printf("\nThis is the FACTORY server developed by %s\n\n" , myName ) ;
     char myUserName[30] ;
+    char    ipStr[ IPSTRLEN ] ;    /* dotted-dec IP addr. */
+
     getlogin_r ( myUserName , 30 ) ;
     time_t  now;
     time( &now ) ;
@@ -122,6 +124,10 @@ int main( int argc , char *argv[] )
         close(sd);
         exit(EXIT_FAILURE);
     }
+
+    inet_ntop( AF_INET, (void *) & srvrSkt.sin_addr.s_addr , ipStr, IPSTRLEN ) ;
+    printf( "Bound socket %d to IP %s Port %d\n" , sd , ipStr , ntohs( srvrSkt.sin_port ) );    
+
 
     signal(SIGINT, goodbye);
     signal(SIGTERM, goodbye);
