@@ -61,6 +61,8 @@ void goodbye(int sig)
     /* Mission Accomplished */
     printf( "\n### I (%d) have been nicely asked to TERMINATE. "
            "goodbye\n\n" , getpid() );  
+    close(sd);
+    exit(0);
 
     // missing code goes here
 
@@ -69,7 +71,9 @@ void goodbye(int sig)
 /*-------------------------------------------------------*/
 int main( int argc , char *argv[] )
 {
-    char  *myName = "Replace with your Names" ; 
+
+    
+    char  *myName = "Joshua Cassada" ; 
     unsigned short port = 50015 ;      /* service port number  */
     int    N = 1 ;                     /* Num threads serving the client */
 
@@ -103,7 +107,23 @@ int main( int argc , char *argv[] )
 
 
     // missing code goes here
+    
+    sd = Socket(AF_INET, SOCK_DGRAM, 0);
+    if (sd < 0){
+        err_sys;
+    }
+    memset((void *) &srvrSkt, 0, sizeof(srvrSkt));
+    srvrSkt.sin_family = AF_INET;
+    srvrSkt.sin_addr.s_addr = htonl(INADDR_ANY);
+    srvrSkt.sin_port = htons(port);
+    if (bind(sd, (const struct sockaddr *)&srvrSkt, sizeof(srvrSkt)) < 0) {
+        perror("bind failed");
+        close(sd);
+        exit(EXIT_FAILURE);
+    }
 
+    signal(SIGINT, goodbye);
+    
 
     int forever = 1;
     while ( forever )
@@ -111,6 +131,13 @@ int main( int argc , char *argv[] )
         printf( "\nFACTORY server waiting for Order Requests\n" ) ; 
 
         // missing code goes here
+        unsigned int client = sizeof(clntSkt);
+        msgBuf msg1;
+
+        recvfrom(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, &client);
+
+
+
 
         printf("\n\nFACTORY server received: " ) ;
         printMsg( & msg1 );  puts("");
