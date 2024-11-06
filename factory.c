@@ -107,6 +107,7 @@ int main( int argc , char *argv[] )
 
 
     // missing code goes here
+    msgBuf msg1;
     
     sd = Socket(AF_INET, SOCK_DGRAM, 0);
     if (sd < 0){
@@ -123,7 +124,7 @@ int main( int argc , char *argv[] )
     }
 
     signal(SIGINT, goodbye);
-    
+    signal(SIGTERM, goodbye);
 
     int forever = 1;
     while ( forever )
@@ -131,24 +132,29 @@ int main( int argc , char *argv[] )
         printf( "\nFACTORY server waiting for Order Requests\n" ) ; 
 
         // missing code goes here
+        
         unsigned int client = sizeof(clntSkt);
-        msgBuf msg1;
 
         recvfrom(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, &client);
 
 
-
-
         printf("\n\nFACTORY server received: " ) ;
-        printMsg( & msg1 );  puts("");
+        printMsg( & msg1 );  
+        puts("");
 
 
         // missing code goes here
+        msg1.purpose = ORDR_CONFIRM;
+        msg1.numFac = 1;
+
+        Sendto(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, client);
+
 
 
         printf("\n\nFACTORY sent this Order Confirmation to the client " );
         printMsg(  & msg1 );  puts("");
         
+        remainsToMake = msg1.orderSize;
         subFactory( 1 , 50 , 350 ) ;  // Single factory, ID=1 , capacity=50, duration=350 ms
     }
 
@@ -169,9 +175,24 @@ void subFactory( int factoryID , int myCapacity , int myDuration )
             break ;   // Not anymore, exit the loop
         
 
+        int toMake = minimum(myCapacity, remainsToMake);
+        remainsToMake -= toMake;
+        partsImade += toMake;
+        myIterations++;
+
 
         // missing code goes here
 
+        Usleep(myDuration * 1000);
+
+        msg.purpose = PRODUCTION_MSG;
+        msg.facID = factoryID;
+        msg.capacity = myCapacity;
+        msg.partsMade = toMake;
+        msg.duration = myDuration;
+        sendto(sd, &msg, sizeof(msg), 0, (SA *)&clntSkt, sizeof(clntSkt));
+        
+    
 
 
         // Send a Production Message to Supervisor
