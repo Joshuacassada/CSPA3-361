@@ -34,7 +34,7 @@ int main( int argc , char *argv[] )
             iters[ MAXFACTORIES+1 ] = {0} ,  // num Iterations completed by each Factory
             partsMade[ MAXFACTORIES+1 ] = {0} , totalItems = 0;
 
-    char  *myName = "MUST WRITE YOUR NAMES HERE" ; 
+    char  *myName = "Joshua Cassada and Thomas Cantrell" ; 
     printf("\nPROCUREMENT: Started. Developed by %s\n\n" , myName );    
 
     char myUserName[30] ;
@@ -57,11 +57,31 @@ int main( int argc , char *argv[] )
 
     /* Set up local and remote sockets */
 
+    struct sockaddr_in myAddr, serverAddr;
 
+    int sd = socket(AF_INET, SOCK_DGRAM, 0);
+    memset((void *) &myAddr, 0, sizeof(myAddr));
+    myAddr.sin_family = AF_INET;
+    myAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    myAddr.sin_port = htons(0);
+
+    if (bind(sd, (const struct sockaddr *)&myAddr, sizeof(myAddr)) < 0) {
+        perror("bind failed");
+        close(sd);
+        exit(EXIT_FAILURE);
+    }
+
+    
     // missing code goes here
 
 
     // Prepare the server's socket address structure
+
+    memset((void *) &serverAddr, 0, sizeof(serverAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(port);
+    inet_pton(AF_INET, serverIP, (void *) & serverAddr.sin_addr.s_addr);
+
 
 
     // missing code goes here
@@ -70,6 +90,8 @@ int main( int argc , char *argv[] )
 
     // Send the initial request to the Factory Server
     msgBuf  msg1;
+
+    msg1.purpose = REQUEST_MSG;
 
 
     // missing code goes here

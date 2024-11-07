@@ -73,7 +73,7 @@ int main( int argc , char *argv[] )
 {
 
     
-    char  *myName = "Joshua Cassada" ; 
+    char  *myName = "Joshua Cassada and Thomas Cantrell" ; 
     unsigned short port = 50015 ;      /* service port number  */
     int    N = 1 ;                     /* Num threads serving the client */
 
@@ -143,18 +143,15 @@ int main( int argc , char *argv[] )
 
         recvfrom(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, &client);
 
-
         printf("\n\nFACTORY server received: " ) ;
         printMsg( & msg1 );  
         puts("");
-
 
         // missing code goes here
         msg1.purpose = ORDR_CONFIRM;
         msg1.numFac = 1;
 
         Sendto(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, client);
-
 
 
         printf("\n\nFACTORY sent this Order Confirmation to the client " );
