@@ -111,7 +111,7 @@ int main( int argc , char *argv[] )
     // missing code goes here
     msgBuf msg1;
     
-    sd = Socket(AF_INET, SOCK_DGRAM, 0);
+    sd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sd < 0){
         err_sys;
     }
@@ -129,8 +129,8 @@ int main( int argc , char *argv[] )
     printf( "Bound socket %d to IP %s Port %d\n" , sd , ipStr , ntohs( srvrSkt.sin_port ) );    
 
 
-    signal(SIGINT, goodbye);
-    signal(SIGTERM, goodbye);
+    sigactionWrapper(SIGINT, goodbye);
+    sigactionWrapper(SIGTERM, goodbye);
 
     int forever = 1;
     while ( forever )
@@ -151,7 +151,7 @@ int main( int argc , char *argv[] )
         msg1.purpose = ORDR_CONFIRM;
         msg1.numFac = 1;
 
-        Sendto(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, client);
+        sendto(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, client);
 
 
         printf("\n\nFACTORY sent this Order Confirmation to the client " );

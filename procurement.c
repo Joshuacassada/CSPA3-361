@@ -60,6 +60,11 @@ int main( int argc , char *argv[] )
     struct sockaddr_in myAddr, serverAddr;
 
     int sd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    if (sd < 0){
+        perror("Socket address failed");
+        exit(EXIT_FAILURE);
+    }
     memset((void *) &myAddr, 0, sizeof(myAddr));
     myAddr.sin_family = AF_INET;
     myAddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -92,7 +97,9 @@ int main( int argc , char *argv[] )
     msgBuf  msg1;
 
     msg1.purpose = REQUEST_MSG;
-
+    msg1.orderSize = orderSize;
+    
+    sendto(sd, &msg1, sizeof(msg1), 0, (SA *)&serverAddr, sizeof(serverAddr));
 
     // missing code goes here
 
@@ -107,6 +114,9 @@ int main( int argc , char *argv[] )
 
 
     // missing code goes here
+    socklen_t len = sizeof(serverAddr);
+
+    recvfrom(sd, &msg2, sizeof(msg2), 0, (SA *)&serverAddr, &len);
 
 
 
@@ -114,6 +124,8 @@ int main( int argc , char *argv[] )
     printMsg( & msg2 );  puts("\n");
 
 
+    numFactories = msg2.numFac;
+    activeFactories = numFactories;
 
     // missing code goes here
 
@@ -122,18 +134,28 @@ int main( int argc , char *argv[] )
     while ( activeFactories > 0 ) // wait for messages from sub-factories
     {
 
+        msgBuf msg;
+
+        recvfrom(sd, &msg, sizeof(msg), 0, (SA *)&serverAddr, &len);
+
+        if (msg.purpose == PRODUCTION_MSG){
+            iters[msg.facID]++;
+            partsMade[msg.facID] += msg.partsMade;
+            printf("Received production update from Factory #%d: made %d items in %d ms\n",
+                   msg.facID, msg.partsMade, msg.duration);
+        } else if (msg.purpose == COMPLETION_MSG){
+            activeFactories--;
+            printf("Factory #%d has completed production\n", msg.facID);
+
+        }
 
         // missing code goes here
 
 
-
        // Inspect the incoming message
-
 
        // missing code goes here
 
-
-       
     } 
 
     // Print the summary report
@@ -142,12 +164,24 @@ int main( int argc , char *argv[] )
 
 
     // missing code goes here
-
+    for (int i = 1; i <= numFactories; i++){
+        printf("Factory #%d: Made %d items in %d iterations\n",
+               i, partsMade[i], iters[i]);
+        totalItems += partsMade[i];
+    }
 
     printf("==============================\n") ;
+    printf("Total items made: %d\n", totalItems);
+    printf("Original order size: %d\n", orderSize);
 
 
     // missing code goes here
+
+    if (totalItems == orderSize){
+        printf("Order completed successfully");
+    }else{
+        printf("THese do not match this is incorrect");
+    }
 
 
     printf( "\n>>> Supervisor Terminated\n");
@@ -155,6 +189,7 @@ int main( int argc , char *argv[] )
 
 
     // missing code goes here
+    close(sd);
 
 
     return 0 ;
