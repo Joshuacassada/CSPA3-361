@@ -48,13 +48,17 @@ int sd;                 // Server socket descriptor
 struct sockaddr_in srvrSkt,    // Server's address
                   clntSkt;     // Client's address
 
+//------------------------------------------------------------
+//  Handle Ctrl-C or KILL 
+//------------------------------------------------------------
 void goodbye(int sig) 
 {
     printf("\n### I (%d) have been nicely asked to TERMINATE. goodbye\n\n", getpid());
-    close(sd);  // CHANGE: Properly close socket
+    close(sd);
     exit(0);
 }
 
+/*-------------------------------------------------------*/
 int main(int argc, char *argv[])
 {
     char *myName = "Joshua Cassada and Thomas Cantrell";
@@ -121,22 +125,25 @@ int main(int argc, char *argv[])
 
         // Receive order request
         msgBuf msg1;
-        memset(&msg1, 0, sizeof(msg1));  // CHANGE: Initialize message buffer
+        memset(&msg1, 0, sizeof(msg1));
         socklen_t client_len = sizeof(clntSkt);
         
         if (recvfrom(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, &client_len) < 0) {
             perror("recvfrom failed");
-            continue;  // Continue instead of exit to maintain service
+            continue;
         }
 
         printf("\n\nFACTORY server received: ");
         printMsg(&msg1);
         puts("");
 
-        // Prepare and send order confirmation
-        msg1.purpose = ORDR_CONFIRM;
-        msg1.numFac = 1;
-        orderSize = msg1.orderSize;  // Store order size
+        // Store order size (convert from network byte order)
+        orderSize = ntohl(msg1.orderSize);
+
+        // Prepare and send order confirmation with network byte order
+        msg1.purpose = htonl(ORDR_CONFIRM);
+        msg1.numFac = htonl(1);
+        msg1.orderSize = htonl(orderSize);
 
         if (sendto(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, client_len) < 0) {
             perror("sendto failed");
@@ -147,7 +154,7 @@ int main(int argc, char *argv[])
         printMsg(&msg1);
         puts("");
         
-        remainsToMake = msg1.orderSize;
+        remainsToMake = orderSize;
         subFactory(1, 50, 350);  // Single factory, ID=1, capacity=50, duration=350 ms
     }
 
@@ -182,6 +189,7 @@ void subFactory(int factoryID, int myCapacity, int myDuration)
 
         if (sendto(sd, &msg, sizeof(msg), 0, (SA *)&clntSkt, sizeof(clntSkt)) < 0) {
             perror("sendto failed in production message");
+            // Note: We continue production even if sending fails
         }
     }
 
@@ -200,50 +208,4 @@ void subFactory(int factoryID, int myCapacity, int myDuration)
     snprintf(strBuff, MAXSTR, ">>> Factory # %-3d: Terminating after making total of %-5d parts in %-4d iterations\n",
              factoryID, partsImade, myIterations);
     factLog(strBuff);
-}
-
-int main(int argc, char *argv[])
-{
-    // ... (previous code remains the same until message handling)
-
-    while (1)
-    {
-        printf("\nFACTORY server waiting for Order Requests\n");
-
-        // Receive order request
-        msgBuf msg1;
-        memset(&msg1, 0, sizeof(msg1));
-        socklen_t client_len = sizeof(clntSkt);
-        
-        if (recvfrom(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, &client_len) < 0) {
-            perror("recvfrom failed");
-            continue;
-        }
-
-        printf("\n\nFACTORY server received: ");
-        printMsg(&msg1);
-        puts("");
-
-        // Store order size (convert from network byte order)
-        orderSize = ntohl(msg1.orderSize);
-
-        // Prepare and send order confirmation with network byte order
-        msg1.purpose = htonl(ORDR_CONFIRM);
-        msg1.numFac = htonl(1);
-        msg1.orderSize = htonl(orderSize);
-
-        if (sendto(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, client_len) < 0) {
-            perror("sendto failed");
-            continue;
-        }
-
-        printf("\n\nFACTORY sent this Order Confirmation to the client ");
-        printMsg(&msg1);
-        puts("");
-        
-        remainsToMake = orderSize;
-        subFactory(1, 50, 350);
-    }
-
-    return 0;
 }
