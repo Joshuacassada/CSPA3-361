@@ -172,26 +172,26 @@ void subFactory(int factoryID, int myCapacity, int myDuration)
 
         Usleep(myDuration * 1000);
 
-        // Send production message
-        memset(&msg, 0, sizeof(msg));  // CHANGE: Initialize message buffer
-        msg.purpose = PRODUCTION_MSG;
-        msg.facID = factoryID;
-        msg.capacity = myCapacity;
-        msg.partsMade = toMake;
-        msg.duration = myDuration;
+        // Send production message with network byte order
+        memset(&msg, 0, sizeof(msg));
+        msg.purpose = htonl(PRODUCTION_MSG);
+        msg.facID = htonl(factoryID);
+        msg.capacity = htonl(myCapacity);
+        msg.partsMade = htonl(toMake);
+        msg.duration = htonl(myDuration);
 
         if (sendto(sd, &msg, sizeof(msg), 0, (SA *)&clntSkt, sizeof(clntSkt)) < 0) {
             perror("sendto failed in production message");
         }
     }
 
-    // Send completion message
-    memset(&msg, 0, sizeof(msg));  // CHANGE: Initialize message buffer
-    msg.purpose = COMPLETION_MSG;
-    msg.facID = factoryID;
-    msg.capacity = myCapacity;
-    msg.partsMade = partsImade;
-    msg.duration = myDuration;
+    // Send completion message with network byte order
+    memset(&msg, 0, sizeof(msg));
+    msg.purpose = htonl(COMPLETION_MSG);
+    msg.facID = htonl(factoryID);
+    msg.capacity = htonl(myCapacity);
+    msg.partsMade = htonl(partsImade);
+    msg.duration = htonl(myDuration);
 
     if (sendto(sd, &msg, sizeof(msg), 0, (SA *)&clntSkt, sizeof(clntSkt)) < 0) {
         perror("sendto failed in completion message");
@@ -200,4 +200,50 @@ void subFactory(int factoryID, int myCapacity, int myDuration)
     snprintf(strBuff, MAXSTR, ">>> Factory # %-3d: Terminating after making total of %-5d parts in %-4d iterations\n",
              factoryID, partsImade, myIterations);
     factLog(strBuff);
+}
+
+int main(int argc, char *argv[])
+{
+    // ... (previous code remains the same until message handling)
+
+    while (1)
+    {
+        printf("\nFACTORY server waiting for Order Requests\n");
+
+        // Receive order request
+        msgBuf msg1;
+        memset(&msg1, 0, sizeof(msg1));
+        socklen_t client_len = sizeof(clntSkt);
+        
+        if (recvfrom(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, &client_len) < 0) {
+            perror("recvfrom failed");
+            continue;
+        }
+
+        printf("\n\nFACTORY server received: ");
+        printMsg(&msg1);
+        puts("");
+
+        // Store order size (convert from network byte order)
+        orderSize = ntohl(msg1.orderSize);
+
+        // Prepare and send order confirmation with network byte order
+        msg1.purpose = htonl(ORDR_CONFIRM);
+        msg1.numFac = htonl(1);
+        msg1.orderSize = htonl(orderSize);
+
+        if (sendto(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, client_len) < 0) {
+            perror("sendto failed");
+            continue;
+        }
+
+        printf("\n\nFACTORY sent this Order Confirmation to the client ");
+        printMsg(&msg1);
+        puts("");
+        
+        remainsToMake = orderSize;
+        subFactory(1, 50, 350);
+    }
+
+    return 0;
 }

@@ -24,40 +24,41 @@
 
 #define MAXFACTORIES    20
 
-typedef struct sockaddr SA ;
+typedef struct sockaddr SA;
 
 /*-------------------------------------------------------*/
-int main( int argc , char *argv[] )
+int main(int argc, char *argv[])
 {
-    int     numFactories ,      // Total Number of Factory Threads
-            activeFactories ,   // How many are still alive and manufacturing parts
-            iters[ MAXFACTORIES+1 ] = {0} ,  // num Iterations completed by each Factory
-            partsMade[ MAXFACTORIES+1 ] = {0} , totalItems = 0;
+    int     numFactories,      // Total Number of Factory Threads
+            activeFactories,   // How many are still alive and manufacturing parts
+            iters[MAXFACTORIES+1] = {0},  // num Iterations completed by each Factory
+            partsMade[MAXFACTORIES+1] = {0}, 
+            totalItems = 0;
 
-    char  *myName = "Joshua Cassada and Thomas Cantrell" ; 
-    printf("\nPROCUREMENT: Started. Developed by %s\n\n" , myName );    
+    char  *myName = "Joshua Cassada and Thomas Cantrell"; 
+    printf("\nPROCUREMENT: Started. Developed by %s\n\n", myName);    
 
-    char myUserName[30] ;
-    getlogin_r ( myUserName , 30 ) ;
+    char myUserName[30];
+    getlogin_r(myUserName, 30);
     time_t  now;
-    time( &now ) ;
-    fprintf( stdout , "Logged in as user '%s' on %s\n\n" , myUserName ,  ctime( &now)  ) ;
-    fflush( stdout ) ;
+    time(&now);
+    fprintf(stdout, "Logged in as user '%s' on %s\n\n", myUserName, ctime(&now));
+    fflush(stdout);
     
-    if ( argc < 4 )
+    if (argc < 4)
     {
-        printf("PROCUREMENT Usage: %s  <order_size> <FactoryServerIP>  <port>\n" , argv[0] );
-        exit( -1 ) ;  
+        printf("PROCUREMENT Usage: %s  <order_size> <FactoryServerIP>  <port>\n", argv[0]);
+        exit(-1);
     }
 
-    unsigned        orderSize  = atoi( argv[1] ) ;
-    char	       *serverIP   = argv[2] ;
-    unsigned short  port       = (unsigned short) atoi( argv[3] ) ;
+    unsigned        orderSize  = atoi(argv[1]);
+    char	       *serverIP   = argv[2];
+    unsigned short  port       = (unsigned short) atoi(argv[3]);
  
     /* Set up local and remote sockets */
     struct sockaddr_in myAddr, serverAddr;
     int sd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sd < 0){
+    if (sd < 0) {
         perror("Socket creation failed");
         exit(EXIT_FAILURE);
     }
@@ -86,62 +87,63 @@ int main( int argc , char *argv[] )
 
     // Send the initial request to the Factory Server
     msgBuf msg1;
-    memset(&msg1, 0, sizeof(msg1));  // CHANGE: Initialize all fields to 0
-    msg1.purpose = REQUEST_MSG;
-    msg1.orderSize = orderSize;
+    memset(&msg1, 0, sizeof(msg1));
+    msg1.purpose = htonl(REQUEST_MSG);
+    msg1.orderSize = htonl(orderSize);
     
-    // CHANGE: Added error checking for sendto
     if (sendto(sd, &msg1, sizeof(msg1), 0, (SA *)&serverAddr, sizeof(serverAddr)) < 0) {
         perror("sendto failed");
         close(sd);
         exit(EXIT_FAILURE);
     }
 
-    printf("\nPROCUREMENT Sent this message to the FACTORY server: "  );
-    printMsg( & msg1 );  puts("");
+    printf("\nPROCUREMENT Sent this message to the FACTORY server: ");
+    printMsg(&msg1);
+    puts("");
 
     /* Now, wait for order confirmation from the Factory server */
     msgBuf msg2;
-    memset(&msg2, 0, sizeof(msg2));  // CHANGE: Initialize message buffer
-    printf ("\nPROCUREMENT is now waiting for order confirmation ...\n" );
+    memset(&msg2, 0, sizeof(msg2));
+    printf("\nPROCUREMENT is now waiting for order confirmation ...\n");
 
     socklen_t len = sizeof(serverAddr);
-    // CHANGE: Added error checking for recvfrom
     if (recvfrom(sd, &msg2, sizeof(msg2), 0, (SA *)&serverAddr, &len) < 0) {
         perror("recvfrom failed");
         close(sd);
         exit(EXIT_FAILURE);
     }
 
-    printf("PROCUREMENT received this from the FACTORY server: "  );
-    printMsg( & msg2 );  puts("\n");
+    printf("PROCUREMENT received this from the FACTORY server: ");
+    printMsg(&msg2);
+    puts("\n");
 
-    numFactories = msg2.numFac;
+    numFactories = ntohl(msg2.numFac);
     activeFactories = numFactories;
 
     // Monitor all Active Factory Lines & Collect Production Reports
-    while ( activeFactories > 0 ) 
+    while (activeFactories > 0) 
     {
         msgBuf msg;
-        memset(&msg, 0, sizeof(msg));  // CHANGE: Initialize message buffer
+        memset(&msg, 0, sizeof(msg));
 
-        // CHANGE: Added error checking for recvfrom
         if (recvfrom(sd, &msg, sizeof(msg), 0, (SA *)&serverAddr, &len) < 0) {
             perror("recvfrom failed");
-            continue;  // Continue instead of exit to maintain robustness
+            continue;
         }
 
-        if (msg.purpose == PRODUCTION_MSG) {
-            iters[msg.facID]++;
-            partsMade[msg.facID] += msg.partsMade;
+        int purpose = ntohl(msg.purpose);
+        if (purpose == PRODUCTION_MSG) {
+            int facID = ntohl(msg.facID);
+            iters[facID]++;
+            partsMade[facID] += ntohl(msg.partsMade);
             printf("Received production update from Factory #%d: made %d items in %d ms\n",
-                   msg.facID, msg.partsMade, msg.duration);
+                   facID, ntohl(msg.partsMade), ntohl(msg.duration));
         } 
-        else if (msg.purpose == COMPLETION_MSG) {
+        else if (purpose == COMPLETION_MSG) {
             activeFactories--;
-            printf("Factory #%d has completed production\n", msg.facID);
+            printf("Factory #%d has completed production\n", ntohl(msg.facID));
         }
-    } 
+    }
 
     // Print the summary report
     totalItems = 0;
