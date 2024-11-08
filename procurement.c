@@ -117,7 +117,9 @@ int main(int argc, char *argv[])
     printMsg(&msg2);
     puts("\n");
 
+    // Convert received values from network to host byte order
     numFactories = ntohl(msg2.numFac);
+    orderSize = ntohl(msg2.orderSize);  // Make sure we have the confirmed order size
     activeFactories = numFactories;
 
     // Monitor all Active Factory Lines & Collect Production Reports
@@ -131,17 +133,23 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        int purpose = ntohl(msg.purpose);
+        // Convert all received values from network to host byte order
+        msgPurpose_t purpose = ntohl(msg.purpose);
+        unsigned facID = ntohl(msg.facID);
+        unsigned capacity = ntohl(msg.capacity);
+        unsigned partsMadeNow = ntohl(msg.partsMade);
+        unsigned duration = ntohl(msg.duration);
+
         if (purpose == PRODUCTION_MSG) {
-            int facID = ntohl(msg.facID);
             iters[facID]++;
-            partsMade[facID] += ntohl(msg.partsMade);
+            partsMade[facID] += partsMadeNow;
             printf("Received production update from Factory #%d: made %d items in %d ms\n",
-                   facID, ntohl(msg.partsMade), ntohl(msg.duration));
+                   facID, partsMadeNow, duration);
         } 
         else if (purpose == COMPLETION_MSG) {
             activeFactories--;
-            printf("Factory #%d has completed production\n", ntohl(msg.facID));
+            printf("Factory #%d has completed production. Total items made: %d\n", 
+                   facID, partsMade[facID]);
         }
     }
 
