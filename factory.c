@@ -139,6 +139,9 @@ int main(int argc, char *argv[])
         printf("\n\nFACTORY server received: ");
         printMsg(&msg1);
         puts("");
+        
+        inet_ntop( AF_INET, (void *) & clntSkt.sin_addr.s_addr , ipStr , IPSTRLEN );
+        printf("        From IP %s Port %d\n", ipStr, ntohs(clntSkt.sin_port));
 
         // Store order size (convert from network byte order)
         orderSize = ntohl(msg1.orderSize);
@@ -179,12 +182,11 @@ void subFactory(int factoryID, int myCapacity, int myDuration)
         remainsToMake -= toMake;
         partsImade += toMake;
         myIterations++;
-        printf("Factory # %d: Going to make     %d parts in   %d mSec\n", factoryID, remainsToMake, myDuration);
+        printf("Factory # %d: Going to make     %d parts in   %d mSec\n", factoryID, toMake, myDuration);
 
         Usleep(myDuration * 1000);
 
         // Send production message with network byte order
-        memset(&msg, 0, sizeof(msg));
         msg.purpose = htonl(PRODUCTION_MSG);
         msg.facID = htonl(factoryID);
         msg.capacity = htonl(myCapacity);

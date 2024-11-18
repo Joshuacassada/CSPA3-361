@@ -85,6 +85,9 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    printf("\nAttempting Factory server at '%s' : %d\n", serverIP, port);
+
+
     // Send the initial request to the Factory Server
     msgBuf msg1;
     memset(&msg1, 0, sizeof(msg1));
@@ -142,16 +145,15 @@ int main(int argc, char *argv[])
         if (purpose == PRODUCTION_MSG) {
             iters[facID]++;
             partsMade[facID] += partsMadeNow;
-            printf("Received production update from Factory #%d: made %d items in %d ms\n",
-                   facID, partsMadeNow, duration);
+            printf("PROCUREMENT: Factory #%d   produced %d   parts in %d   milliSecs\n",
+               facID, partsMadeNow, duration);
         } 
         else if (purpose == COMPLETION_MSG) {
             activeFactories--;
-            printf("Factory #%d has completed production. Total items made: %d\n", 
-                   facID, partsMade[facID]);
+            printf("PROCUREMENT: Factory #%d         COMPLETED its task\n", facID);
         }
         else if (purpose == PROTOCOL_ERR){
-            printf("PROCUREMENT: Received { PROTOCOL_ERROR }");
+            printf("PROCUREMENT: Received { PROTOCOL_ERROR }\n");
             close(sd);
             exit(1);
         }
@@ -162,22 +164,20 @@ int main(int argc, char *argv[])
     printf("\n\n****** PROCUREMENT Summary Report ******\n");
 
     for (int i = 1; i <= numFactories; i++) {
-        printf("Factory #%d: Made %d items in %d iterations\n",
+        printf("Factory #%d: made a total  of    %d items in      %d iterations\n",
                i, partsMade[i], iters[i]);
         totalItems += partsMade[i];
     }
 
     printf("==============================\n");
-    printf("Total items made: %d\n", totalItems);
-    printf("Original order size: %d\n", orderSize);
+    printf("Grand total parts made = %d   vs order size of   %d\n", totalItems, orderSize);
 
     if (totalItems == orderSize) {
-        printf("Order completed successfully\n");
+        printf("\n>>> PROCUREMENT Terminated\n");
     } else {
         printf("Order size mismatch - error in production\n");
     }
 
-    printf("\n>>> Supervisor Terminated\n");
 
     close(sd);
     return 0;
