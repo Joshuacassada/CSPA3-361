@@ -54,6 +54,9 @@ struct sockaddr_in srvrSkt,    // Server's address
 void goodbye(int sig) 
 {
     printf("\n### I (%d) have been nicely asked to TERMINATE. goodbye\n\n", getpid());
+    msgBuf errorMsg;
+    errorMsg.purpose = htonl(PROTOCOL_ERR);
+    sendto(sd, &errorMsg, sizeof(errorMsg), 0, (SA *) &clntSkt, sizeof(clntSkt));
     close(sd);
     exit(0);
 }
@@ -128,10 +131,10 @@ int main(int argc, char *argv[])
         memset(&msg1, 0, sizeof(msg1));
         socklen_t client_len = sizeof(clntSkt);
         
-        if (recvfrom(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, &client_len) < 0) {
-            perror("recvfrom failed");
-            continue;
-        }
+        if (recvfrom(sd, &msg1, sizeof(msg1), 0, (SA *)&clntSkt, &client_len) < 0){
+            err_sys("recvfrom");
+        };
+    
 
         printf("\n\nFACTORY server received: ");
         printMsg(&msg1);
@@ -157,7 +160,7 @@ int main(int argc, char *argv[])
         remainsToMake = orderSize;
         subFactory(1, 50, 350);  // Single factory, ID=1, capacity=50, duration=350 ms
     }
-
+ 
     return 0;
 }
 
@@ -176,6 +179,7 @@ void subFactory(int factoryID, int myCapacity, int myDuration)
         remainsToMake -= toMake;
         partsImade += toMake;
         myIterations++;
+        printf("Factory # %d: Going to make     %d parts in   %d mSec\n", factoryID, remainsToMake, myDuration);
 
         Usleep(myDuration * 1000);
 

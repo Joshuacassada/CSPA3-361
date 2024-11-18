@@ -129,8 +129,7 @@ int main(int argc, char *argv[])
         memset(&msg, 0, sizeof(msg));
 
         if (recvfrom(sd, &msg, sizeof(msg), 0, (SA *)&serverAddr, &len) < 0) {
-            perror("recvfrom failed");
-            continue;
+            err_sys("recvfrom failed");
         }
 
         // Convert all received values from network to host byte order
@@ -150,6 +149,11 @@ int main(int argc, char *argv[])
             activeFactories--;
             printf("Factory #%d has completed production. Total items made: %d\n", 
                    facID, partsMade[facID]);
+        }
+        else if (purpose == PROTOCOL_ERR){
+            printf("PROCUREMENT: Received { PROTOCOL_ERROR }");
+            close(sd);
+            exit(1);
         }
     }
 
